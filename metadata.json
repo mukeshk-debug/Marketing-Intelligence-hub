@@ -1,0 +1,6 @@
+{
+  "name": "Marketing Intelligence Hub",
+  "description": "Internal marketing analytics, UTM attribution, advertising spend, and lead management platform.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
