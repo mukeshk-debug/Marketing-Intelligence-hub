@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, ExternalLink, Globe, Eye, X } from 'lucide-react';
+import { Search, ExternalLink, Globe, Eye, X, Plus, Trash2 } from 'lucide-react';
 import { useFilters } from '../context/FilterContext.tsx';
 import type { LandingPageMetric } from '../types/index.ts';
 
@@ -9,24 +9,61 @@ export const LandingPagesView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedPage, setSelectedPage] = useState<LandingPageMetric | null>(null);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [newPage, setNewPage] = useState({
+    page_name: '',
+    url: '',
+    service: 'Custom Software',
+  });
+
+  const fetchPages = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/landing-pages');
+      if (res.ok) {
+        const data = await res.json();
+        setPages(data);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchPages = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch('/api/landing-pages');
-        if (res.ok) {
-          const data = await res.json();
-          setPages(data);
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchPages();
   }, []);
+
+  const handleCreatePage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch('/api/landing-pages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newPage),
+      });
+      if (res.ok) {
+        setIsAddModalOpen(false);
+        setNewPage({ page_name: '', url: '', service: 'Custom Software' });
+        fetchPages();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeletePage = async (id: string, name: string) => {
+    if (!window.confirm(`Are you sure you want to delete landing page "${name}"?`)) return;
+    try {
+      const res = await fetch(`/api/landing-pages/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        fetchPages();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const filtered = pages.filter((p) => {
     return (
@@ -50,6 +87,14 @@ export const LandingPagesView: React.FC = () => {
             className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
         </div>
+        <button
+          type="button"
+          onClick={() => setIsAddModalOpen(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 shadow-xs"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          <span>Add Landing Page</span>
+        </button>
       </div>
 
       {/* Landing Pages Table */}
@@ -66,7 +111,7 @@ export const LandingPagesView: React.FC = () => {
                 <th className="py-3 px-4 text-right">Leads</th>
                 <th className="py-3 px-4 text-right">MQL</th>
                 <th className="py-3 px-4 text-right">Conv. Rate</th>
-                <th className="py-3 px-4 text-right">Details</th>
+                <th className="py-3 px-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -84,14 +129,22 @@ export const LandingPagesView: React.FC = () => {
                   <td className="py-3 px-4 text-right font-bold text-blue-600">
                     {p.conversion_rate !== null ? `${p.conversion_rate.toFixed(2)}%` : '—'}
                   </td>
-                  <td className="py-3 px-4 text-right">
+                  <td className="py-3 px-4 text-right space-x-1 whitespace-nowrap">
                     <button
                       type="button"
                       onClick={() => setSelectedPage(p)}
                       className="p-1 rounded text-slate-400 hover:text-blue-600 hover:bg-slate-100"
                       title="View Traffic & Channel Breakdown"
                     >
-                      <Eye className="w-3.5 h-3.5" />
+                      <Eye className="w-3.5 h-3.5 inline" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeletePage(p.id, p.page_name)}
+                      className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50"
+                      title="Delete Landing Page"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 inline" />
                     </button>
                   </td>
                 </tr>
@@ -100,6 +153,78 @@ export const LandingPagesView: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* Add Page Modal */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
+          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md overflow-hidden flex flex-col">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+              <h3 className="text-base font-bold text-slate-900">Add Tracked Landing Page</h3>
+              <button
+                type="button"
+                onClick={() => setIsAddModalOpen(false)}
+                className="p-1 text-slate-400 hover:text-slate-700 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleCreatePage} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Page Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. AI Engineering Hub"
+                  value={newPage.page_name}
+                  onChange={(e) => setNewPage({ ...newPage, page_name: e.target.value })}
+                  className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">URL *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="https://example.com/ai-development"
+                  value={newPage.url}
+                  onChange={(e) => setNewPage({ ...newPage, url: e.target.value })}
+                  className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Target Service</label>
+                <select
+                  value={newPage.service}
+                  onChange={(e) => setNewPage({ ...newPage, service: e.target.value })}
+                  className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="AI & Machine Learning">AI & Machine Learning</option>
+                  <option value="Custom Software">Custom Software</option>
+                  <option value="Mobile App Development">Mobile App Development</option>
+                  <option value="Cloud Architecture">Cloud Architecture</option>
+                  <option value="Cybersecurity">Cybersecurity</option>
+                  <option value="Enterprise Solutions">Enterprise Solutions</option>
+                </select>
+              </div>
+              <div className="pt-2 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="px-3 py-1.5 rounded-lg border border-slate-300 text-slate-600 text-xs hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 shadow-xs"
+                >
+                  Save Landing Page
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Detail Drawer Modal */}
       {selectedPage && (

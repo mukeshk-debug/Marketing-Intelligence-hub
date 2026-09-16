@@ -45,6 +45,10 @@ export interface DatabaseSchema {
   sync_logs: SyncLog[];
   currencies: Currency[];
   exchange_rates: ExchangeRate[];
+  b2b_records?: {
+    clutch: any[];
+    goodfirms: any[];
+  };
 }
 
 export class Database {
@@ -1326,6 +1330,26 @@ export class Database {
     return newEntry;
   }
 
+  public updateSpendEntry(id: string, updates: Partial<SpendEntry>) {
+    const idx = this.data.spend_entries.findIndex((s) => s.id === id);
+    if (idx === -1) return null;
+    this.data.spend_entries[idx] = {
+      ...this.data.spend_entries[idx],
+      ...updates,
+      updated_at: new Date().toISOString(),
+    };
+    this.saveDatabase();
+    return this.data.spend_entries[idx];
+  }
+
+  public deleteSpendEntry(id: string): boolean {
+    const idx = this.data.spend_entries.findIndex((s) => s.id === id);
+    if (idx === -1) return false;
+    this.data.spend_entries.splice(idx, 1);
+    this.saveDatabase();
+    return true;
+  }
+
   // --- TRAFFIC DAILY & REAL INGESTION ---
   public getTraffic(filters?: Partial<GlobalFilterState>) {
     let list = [...this.data.traffic_daily];
@@ -1631,6 +1655,14 @@ export class Database {
     return this.data.campaigns[idx];
   }
 
+  public deleteCampaign(id: string): boolean {
+    const idx = this.data.campaigns.findIndex((c) => c.id === id);
+    if (idx === -1) return false;
+    this.data.campaigns.splice(idx, 1);
+    this.saveDatabase();
+    return true;
+  }
+
   // --- PLATFORMS ---
   public getPlatforms() {
     return this.data.platforms;
@@ -1669,6 +1701,14 @@ export class Database {
     this.data.landing_pages.push(newPage);
     this.saveDatabase();
     return newPage;
+  }
+
+  public deleteLandingPage(id: string): boolean {
+    const idx = this.data.landing_pages.findIndex((l) => l.id === id);
+    if (idx === -1) return false;
+    this.data.landing_pages.splice(idx, 1);
+    this.saveDatabase();
+    return true;
   }
 
   // --- DAILY MARKETING ACTIVITIES ---
@@ -1711,6 +1751,55 @@ export class Database {
     this.data.daily_marketing_activities.unshift(newAct);
     this.saveDatabase();
     return newAct;
+  }
+
+  public updateDailyActivity(id: string, updates: Partial<DailyMarketingActivity>) {
+    const idx = this.data.daily_marketing_activities.findIndex((a) => a.id === id);
+    if (idx === -1) return null;
+    this.data.daily_marketing_activities[idx] = {
+      ...this.data.daily_marketing_activities[idx],
+      ...updates,
+      updated_at: new Date().toISOString(),
+    };
+    this.saveDatabase();
+    return this.data.daily_marketing_activities[idx];
+  }
+
+  public deleteDailyActivity(id: string): boolean {
+    const idx = this.data.daily_marketing_activities.findIndex((a) => a.id === id);
+    if (idx === -1) return false;
+    this.data.daily_marketing_activities.splice(idx, 1);
+    this.saveDatabase();
+    return true;
+  }
+
+  // --- ORGANIZATION SETTINGS ---
+  public getOrganization(): Organization {
+    if (!this.data.organizations || this.data.organizations.length === 0) {
+      const defaultOrg: Organization = {
+        id: 'org-marketing-hub-1',
+        name: 'Acme Global Technologies (Internal Marketing)',
+        default_currency: 'USD',
+        timezone: 'America/New_York',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      this.data.organizations = [defaultOrg];
+      this.saveDatabase();
+    }
+    return this.data.organizations[0];
+  }
+
+  public updateOrganization(updates: Partial<Organization>): Organization {
+    const org = this.getOrganization();
+    const updated: Organization = {
+      ...org,
+      ...updates,
+      updated_at: new Date().toISOString(),
+    };
+    this.data.organizations[0] = updated;
+    this.saveDatabase();
+    return updated;
   }
 
   // --- INTEGRATIONS & SYNC LOGS ---
@@ -1788,7 +1877,125 @@ export class Database {
     this.saveDatabase();
   }
 
-  // --- AGGREGATIONS & METRICS CALCULATIONS ---
+  // --- B2B DIRECTORY PLATFORM RECORDS (Clutch & GoodFirms) ---
+  public getB2BRecords(): { clutch: any[]; goodfirms: any[] } {
+    if (!this.data.b2b_records) {
+      // Initialize default initial records
+      this.data.b2b_records = {
+        clutch: [
+          {
+            id: 'rec-clutch-aug',
+            month: '2026-08',
+            plan: 'Featured Sponsor - AI & Mobile',
+            sponsorshipAmount: 1800,
+            pplAmount: 750,
+            totalCost: 2550,
+            traffic: 540,
+            leads: 18,
+            cpl: 141.67,
+            invoice: 'INV-CLU-2026-08',
+            notes: 'Strong performance on AI and mobile engineering categories',
+          },
+          {
+            id: 'rec-clutch-jul',
+            month: '2026-07',
+            plan: 'Top Developer - Custom Software',
+            sponsorshipAmount: 1800,
+            pplAmount: 620,
+            totalCost: 2420,
+            traffic: 490,
+            leads: 15,
+            cpl: 161.33,
+            invoice: 'INV-CLU-2026-07',
+            notes: 'Consistent organic referral traffic',
+          },
+        ],
+        goodfirms: [
+          {
+            id: 'rec-goodfirms-aug',
+            month: '2026-08',
+            category: 'Top AI Development Companies',
+            subscriptionAmount: 1200,
+            pplAmount: 480,
+            totalCost: 1680,
+            traffic: 420,
+            leads: 12,
+            cpl: 140.0,
+            invoice: 'INV-GF-2026-08',
+            notes: 'Featured badges and direct RFQ inquiries',
+          },
+          {
+            id: 'rec-goodfirms-jul',
+            month: '2026-07',
+            category: 'Enterprise App Developers',
+            subscriptionAmount: 1200,
+            pplAmount: 510,
+            totalCost: 1710,
+            traffic: 395,
+            leads: 11,
+            cpl: 155.45,
+            invoice: 'INV-GF-2026-07',
+            notes: 'Good pipeline velocity on enterprise inquiries',
+          },
+        ],
+      };
+      this.saveDatabase();
+    }
+    return this.data.b2b_records;
+  }
+
+  public addB2BRecord(type: 'clutch' | 'goodfirms', record: any) {
+    const records = this.getB2BRecords();
+    const nowIso = new Date().toISOString();
+    const id = `rec-${type}-${Date.now()}`;
+    const newRecord = {
+      ...record,
+      id,
+      created_at: nowIso,
+      updated_at: nowIso,
+    };
+    records[type].unshift(newRecord);
+
+    // Also automatically log spend entry so directory spend reflects in all reports & KPIs
+    const platName = type === 'clutch' ? 'Clutch' : 'GoodFirms';
+    const plat = this.data.platforms.find((p) => p.name === platName);
+    const date = `${record.month || nowIso.slice(0, 7)}-01`;
+    const totalCost = Number(record.totalCost || record.sponsorshipAmount || record.subscriptionAmount || 0) + Number(record.pplAmount || 0);
+
+    if (totalCost > 0 && plat) {
+      this.data.spend_entries.unshift({
+        id: `sp-${type}-${Date.now()}`,
+        organization_id: 'org-marketing-hub-1',
+        origin: 'Manual',
+        date,
+        platform_id: plat.id,
+        platform_name: plat.name,
+        campaign_id: null,
+        campaign_name: `${platName} Directory Sponsorship & PPL`,
+        cost_type: record.pplAmount > 0 ? 'PPL' : 'Subscription',
+        amount: totalCost,
+        currency: 'USD',
+        source: 'Manual',
+        is_adjustment: false,
+        reference_entry_id: null,
+        notes: `${platName} ${record.month} (Invoice: ${record.invoice || 'N/A'}) - ${record.notes || ''}`,
+        created_at: nowIso,
+        updated_at: nowIso,
+      });
+    }
+
+    this.saveDatabase();
+    return newRecord;
+  }
+
+  public deleteB2BRecord(type: 'clutch' | 'goodfirms', id: string): boolean {
+    const records = this.getB2BRecords();
+    const idx = records[type].findIndex((r: any) => r.id === id || r.month === id);
+    if (idx === -1) return false;
+    records[type].splice(idx, 1);
+    this.saveDatabase();
+    return true;
+  }
   // Calculates factual KPIs from database records without hardcoding
   public calculateDashboardKPIs(filters: GlobalFilterState): {
     kpis: DashboardKPIs;

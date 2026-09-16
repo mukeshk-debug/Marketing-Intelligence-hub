@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Search, DollarSign, Edit2, X, AlertCircle } from 'lucide-react';
+import { Plus, Search, DollarSign, Edit2, X, AlertCircle, Trash2 } from 'lucide-react';
 import type { SpendRecord, PlatformType, CostType, CurrencyCode } from '../types/index.ts';
 import { useFilters } from '../context/FilterContext.tsx';
 
@@ -78,6 +78,18 @@ export const SpendCostView: React.FC = () => {
       });
       if (res.ok) {
         setIsModalOpen(false);
+        fetchSpend();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteSpend = async (id: string) => {
+    if (!window.confirm(`Are you sure you want to delete spend record #${id}?`)) return;
+    try {
+      const res = await fetch(`/api/spend/${id}`, { method: 'DELETE' });
+      if (res.ok) {
         fetchSpend();
       }
     } catch (err) {
@@ -196,7 +208,7 @@ export const SpendCostView: React.FC = () => {
                   <td className="py-3 px-4 text-slate-500 max-w-xs truncate" title={s.notes}>
                     {s.notes || '—'}
                   </td>
-                  <td className="py-3 px-4 text-right whitespace-nowrap">
+                  <td className="py-3 px-4 text-right whitespace-nowrap space-x-1">
                     <button
                       type="button"
                       onClick={() => handleOpenAdjust(s)}
@@ -204,6 +216,14 @@ export const SpendCostView: React.FC = () => {
                       title="Create linked audit adjustment without overwriting raw source"
                     >
                       Adjust
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteSpend(s.id)}
+                      className="p-1 rounded text-xs text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                      title="Delete spend entry"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 inline" />
                     </button>
                   </td>
                 </tr>

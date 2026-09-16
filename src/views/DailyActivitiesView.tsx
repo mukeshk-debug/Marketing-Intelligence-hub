@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, CalendarCheck, X } from 'lucide-react';
+import { Plus, Search, CalendarCheck, X, Edit2, Trash2 } from 'lucide-react';
 import type { DailyActivity, PlatformType, ActivityType } from '../types/index.ts';
 
 export const DailyActivitiesView: React.FC = () => {
@@ -10,6 +10,7 @@ export const DailyActivitiesView: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState('all');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
   const [formData, setFormData] = useState<Partial<DailyActivity>>({});
 
   const fetchActivities = async () => {
@@ -32,6 +33,7 @@ export const DailyActivitiesView: React.FC = () => {
   }, []);
 
   const handleOpenCreate = () => {
+    setModalMode('create');
     setFormData({
       date: new Date().toISOString().slice(0, 10),
       platform: 'Google Ads',
@@ -44,16 +46,36 @@ export const DailyActivitiesView: React.FC = () => {
     setIsModalOpen(true);
   };
 
+  const handleOpenEdit = (a: DailyActivity) => {
+    setModalMode('edit');
+    setFormData({ ...a });
+    setIsModalOpen(true);
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/activities', {
-        method: 'POST',
+      const url = modalMode === 'create' ? '/api/activities' : `/api/activities/${formData.id}`;
+      const method = modalMode === 'create' ? 'POST' : 'PUT';
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
       if (res.ok) {
         setIsModalOpen(false);
+        fetchActivities();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteActivity = async (id: string, desc: string) => {
+    if (!window.confirm(`Are you sure you want to delete activity: "${desc.slice(0, 40)}..."?`)) return;
+    try {
+      const res = await fetch(`/api/activities/${id}`, { method: 'DELETE' });
+      if (res.ok) {
         fetchActivities();
       }
     } catch (err) {
@@ -140,6 +162,7 @@ export const DailyActivitiesView: React.FC = () => {
                 <th className="py-3 px-4">Campaign</th>
                 <th className="py-3 px-4">Performed By</th>
                 <th className="py-3 px-4">Impact Notes</th>
+                <th className="py-3 px-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -158,11 +181,29 @@ export const DailyActivitiesView: React.FC = () => {
                   <td className="py-3 px-4 text-slate-500 max-w-xs truncate" title={a.impact_notes}>
                     {a.impact_notes || '—'}
                   </td>
+                  <td className="py-3 px-4 text-right space-x-1 whitespace-nowrap">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEdit(a)}
+                      className="p-1 rounded text-slate-400 hover:text-blue-600 hover:bg-slate-100"
+                      title="Edit Activity"
+                    >
+                      <Edit2 className="w-3.5 h-3.5 inline" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteActivity(a.id, a.description)}
+                      className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50"
+                      title="Delete Activity"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 inline" />
+                    </button>
+                  </td>
                 </tr>
               ))}
               {filtered.length === 0 && !loading && (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-slate-400">
+                  <td colSpan={8} className="py-8 text-center text-slate-400">
                     No marketing activities found.
                   </td>
                 </tr>
@@ -177,7 +218,9 @@ export const DailyActivitiesView: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
           <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-lg overflow-hidden flex flex-col">
             <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-              <h3 className="text-base font-bold text-slate-900">Log Daily Marketing Activity</h3>
+              <h3 className="text-base font-bold text-slate-900">
+                {modalMode === 'create' ? 'Log Daily Marketing Activity' : 'Edit Marketing Activity'}
+              </h3>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}

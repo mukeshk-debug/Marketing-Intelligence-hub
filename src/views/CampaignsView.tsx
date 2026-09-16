@@ -76,6 +76,18 @@ export const CampaignsView: React.FC = () => {
     }
   };
 
+  const handleDeleteCampaign = async (id: string, name: string) => {
+    if (!window.confirm(`Are you sure you want to delete campaign "${name}"?`)) return;
+    try {
+      const res = await fetch(`/api/campaigns/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        fetchCampaigns();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const filtered = campaigns.filter((c) => {
     const matchesSearch =
       c.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -165,13 +177,22 @@ export const CampaignsView: React.FC = () => {
                       {c.status}
                     </span>
                   </td>
-                  <td className="py-3 px-4 text-right">
+                  <td className="py-3 px-4 text-right space-x-1">
                     <button
                       type="button"
                       onClick={() => handleOpenEdit(c)}
                       className="p-1 rounded text-slate-400 hover:text-blue-600 hover:bg-slate-100"
+                      title="Edit campaign"
                     >
-                      <Edit2 className="w-3.5 h-3.5" />
+                      <Edit2 className="w-3.5 h-3.5 inline" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteCampaign(c.id, c.name)}
+                      className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50"
+                      title="Delete campaign"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 inline" />
                     </button>
                   </td>
                 </tr>

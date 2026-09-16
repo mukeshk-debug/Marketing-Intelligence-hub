@@ -60,9 +60,36 @@ export const defaultFilters: GlobalFilterState = {
 
 const FilterContext = createContext<FilterContextType | undefined>(undefined);
 
+const defaultRates: Record<CurrencyCode, number> = {
+  USD: 1,
+  INR: 83.5,
+  AED: 3.67,
+  GBP: 0.79,
+  SAR: 3.75,
+  EUR: 0.92,
+};
+
 export const FilterProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [filters, setFilters] = useState<GlobalFilterState>(defaultFilters);
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencyCode>('USD');
+  const [exchangeRates, setExchangeRates] = useState<Record<string, number>>(defaultRates);
+
+  useEffect(() => {
+    fetch('/api/currencies')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && data.exchangeRates) {
+          const map: Record<string, number> = { ...defaultRates };
+          for (const r of data.exchangeRates) {
+            if (r.from_currency === 'USD') {
+              map[r.to_currency] = r.rate;
+            }
+          }
+          setExchangeRates(map);
+        }
+      })
+      .catch((err) => console.error('Error loading currency rates:', err));
+  }, []);
 
   const setDatePreset = useCallback((preset: GlobalFilterState['dateRange']) => {
     const { startDate, endDate } = computeDatePreset(preset);
@@ -94,9 +121,11 @@ export const FilterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         EUR: '€',
       };
       const sym = symbols[currency] || '$';
-      return `${sym}${amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+      const rate = exchangeRates[currency] || defaultRates[currency] || 1;
+      const converted = amount * rate;
+      return `${sym}${converted.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
     },
-    [selectedCurrency]
+    [selectedCurrency, exchangeRates]
   );
 
   return (

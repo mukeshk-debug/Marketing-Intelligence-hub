@@ -8,6 +8,12 @@ export const SettingsView: React.FC = () => {
   const [currencies, setCurrencies] = useState<any[]>([]);
   const [resetMessage, setResetMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [orgForm, setOrgForm] = useState({
+    companyName: 'Acme Global Technologies (Internal Marketing)',
+    teamLead: 'Sarah Jenkins (Growth & Performance Lead)',
+    timezone: 'America/New_York',
+  });
+  const [savingOrg, setSavingOrg] = useState(false);
 
   const fetchSettings = async () => {
     try {
@@ -15,6 +21,13 @@ export const SettingsView: React.FC = () => {
       if (res.ok) {
         const data = await res.json();
         setCurrencies(data.currencies);
+        if (data.organization) {
+          setOrgForm({
+            companyName: data.organization.companyName || 'Acme Global Technologies (Internal Marketing)',
+            teamLead: data.organization.teamLead || 'Sarah Jenkins (Growth & Performance Lead)',
+            timezone: data.organization.timezone || 'America/New_York',
+          });
+        }
       }
     } catch (err) {
       console.error(err);
@@ -24,6 +37,25 @@ export const SettingsView: React.FC = () => {
   useEffect(() => {
     fetchSettings();
   }, []);
+
+  const handleSaveOrg = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingOrg(true);
+    try {
+      const res = await fetch('/api/settings/organization', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(orgForm),
+      });
+      if (res.ok) {
+        setResetMessage('Organization profile updated successfully!');
+      }
+    } catch (err: any) {
+      setResetMessage(`Error updating profile: ${err.message}`);
+    } finally {
+      setSavingOrg(false);
+    }
+  };
 
   const handleResetDemoData = async () => {
     if (!window.confirm('Reset all databases with 30 days of clean, realistic marketing demo records?')) {
@@ -85,26 +117,37 @@ export const SettingsView: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs pt-2">
-          <div>
-            <label className="block font-medium text-slate-700 mb-1">Company / Domain</label>
-            <input
-              type="text"
-              readOnly
-              value="Acme Global Technologies (Internal Marketing)"
-              className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-700"
-            />
+        <form onSubmit={handleSaveOrg} className="space-y-4 pt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+            <div>
+              <label className="block font-medium text-slate-700 mb-1">Company / Domain</label>
+              <input
+                type="text"
+                value={orgForm.companyName}
+                onChange={(e) => setOrgForm({ ...orgForm, companyName: e.target.value })}
+                className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block font-medium text-slate-700 mb-1">Marketing Team Lead</label>
+              <input
+                type="text"
+                value={orgForm.teamLead}
+                onChange={(e) => setOrgForm({ ...orgForm, teamLead: e.target.value })}
+                className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
           </div>
-          <div>
-            <label className="block font-medium text-slate-700 mb-1">Marketing Team Lead</label>
-            <input
-              type="text"
-              readOnly
-              value="Sarah Jenkins (Growth & Performance Lead)"
-              className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-700"
-            />
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              disabled={savingOrg}
+              className="px-3.5 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-xs"
+            >
+              {savingOrg ? 'Saving...' : 'Save Profile Changes'}
+            </button>
           </div>
-        </div>
+        </form>
       </div>
 
       {/* Currency Settings */}

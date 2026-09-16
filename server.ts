@@ -154,6 +154,26 @@ async function startServer() {
     }
   });
 
+  app.put('/api/spend/:id', (req, res) => {
+    try {
+      const updated = db.updateSpendEntry(req.params.id, req.body);
+      if (!updated) return res.status(404).json({ error: 'Spend entry not found' });
+      res.json(updated);
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/spend/:id', (req, res) => {
+    try {
+      const success = db.deleteSpendEntry(req.params.id);
+      if (!success) return res.status(404).json({ error: 'Spend entry not found' });
+      res.json({ success: true, id: req.params.id });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // Campaigns
   app.get('/api/campaigns', (req, res) => {
     res.json(db.getCampaigns());
@@ -168,6 +188,12 @@ async function startServer() {
     const updated = db.updateCampaign(req.params.id, req.body);
     if (!updated) return res.status(404).json({ error: 'Campaign not found' });
     res.json(updated);
+  });
+
+  app.delete('/api/campaigns/:id', (req, res) => {
+    const success = db.deleteCampaign(req.params.id);
+    if (!success) return res.status(404).json({ error: 'Campaign not found' });
+    res.json({ success: true, id: req.params.id });
   });
 
   // Platforms
@@ -244,6 +270,12 @@ async function startServer() {
     res.status(201).json(created);
   });
 
+  app.delete('/api/landing-pages/:id', (req, res) => {
+    const success = db.deleteLandingPage(req.params.id);
+    if (!success) return res.status(404).json({ error: 'Landing page not found' });
+    res.json({ success: true, id: req.params.id });
+  });
+
   // Daily Marketing Activities
   app.get('/api/activities', (req, res) => {
     const { date, platform, activity_type } = req.query;
@@ -272,6 +304,45 @@ async function startServer() {
       remarks: req.body.impact_notes || req.body.remarks,
     });
     res.status(201).json(act);
+  });
+
+  app.put('/api/activities/:id', (req, res) => {
+    const updated = db.updateDailyActivity(req.params.id, {
+      ...req.body,
+      owner: req.body.performed_by || req.body.owner,
+      remarks: req.body.impact_notes || req.body.remarks,
+    });
+    if (!updated) return res.status(404).json({ error: 'Activity not found' });
+    res.json(updated);
+  });
+
+  app.delete('/api/activities/:id', (req, res) => {
+    const success = db.deleteDailyActivity(req.params.id);
+    if (!success) return res.status(404).json({ error: 'Activity not found' });
+    res.json({ success: true, id: req.params.id });
+  });
+
+  // B2B Directory Platform Records (Clutch & GoodFirms)
+  app.get('/api/platforms/b2b', (req, res) => {
+    res.json(db.getB2BRecords());
+  });
+
+  app.post('/api/platforms/b2b', (req, res) => {
+    const { type, record } = req.body;
+    if (!type || !record || (type !== 'clutch' && type !== 'goodfirms')) {
+      return res.status(400).json({ error: 'Valid type (clutch/goodfirms) and record object required' });
+    }
+    const saved = db.addB2BRecord(type, record);
+    res.status(201).json(saved);
+  });
+
+  app.delete('/api/platforms/b2b/:type/:id', (req, res) => {
+    const { type, id } = req.params;
+    if (type !== 'clutch' && type !== 'goodfirms') {
+      return res.status(400).json({ error: 'Invalid platform type' });
+    }
+    const success = db.deleteB2BRecord(type as any, id);
+    res.json({ success });
   });
 
   // Reports: EOD & Monthly
@@ -965,10 +1036,19 @@ async function startServer() {
       };
     });
     res.json({
-      organization: db.getSchema().organizations[0] || { name: 'Acme Global Technologies' },
+      organization: db.getOrganization(),
       currencies,
       exchangeRates: rates,
     });
+  });
+
+  app.put('/api/settings/organization', (req, res) => {
+    try {
+      const updated = db.updateOrganization(req.body);
+      res.json(updated);
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
   });
 
   app.post('/api/settings/reset-demo-data', (req, res) => {
